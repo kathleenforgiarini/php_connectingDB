@@ -1,11 +1,3 @@
-<?php
-$host = "127.0.0.1";
-$user = "root";
-$pass = "";
-$dbname = "dbstudent";
-$connection = mysqli_connect($host, $user, $pass, $dbname);
-
-?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -63,7 +55,7 @@ button {
 <body>
 	<div id="container">
 		<h1>Student Management</h1>
-		<form method="post">
+		<form action="Exercise1.php" method="GET">
 			<label for="student_id">Student Id:</label> <input type="number"
 				id="student_id" name="student_id" /> <br /> <label
 				for="student_name">Student name:</label> <input type="text"
@@ -74,62 +66,116 @@ button {
 				Id:</label> <input type="number" id="group_id" name="group_id" /> <br />
 			<label for="photo">Photo:</label> <input type="file" id="photo"
 				name="photo" /> <br />
-			<button type="submit" name="add">Add</button>
-			<button type="submit" name="update">Update</button>
-			<button type="submit" name="delete">Delete</button>
+			<button type="submit" name="oper" value="add">Add</button>
+			<button type="submit" name="oper" value="upd">Update</button>
+			<button type="submit" name="oper" value="del">Delete</button>
 		</form>
 	</div>
 </body>
 </html>
-
 <?php
-        $message = "";
+require_once 'dbConfigEx1.php';
 
-        if ($_SERVER["REQUEST_METHOD"] == "POST") {
-            $student_id = $_POST['student_id'];
-            $student_name = $_POST['student_name'];
-            $address = $_POST['address'];
-            $birthdate = $_POST['birthdate'];
-            $group_id = $_POST['group_id'];
-            $photo = $_POST['photo'];
+if (isset($_GET["oper"])) {
+    $oper = $_GET["oper"];
 
-            if (isset($_POST['add'])) {
-                $query = "INSERT INTO student VALUES ('$student_id', '$student_name', '$address', '$birthdate', '$group_id', '$photo')";
-                mysqli_query($connection, $query);
-                $message = "Add: $student_name";
-            } elseif (isset($_POST['update'])) {
-                $updatedFields = [];
-                if (!empty($student_name)) {
-                    $updatedFields[] = "Student Name";
-                }
-                if (!empty($address)) {
-                    $updatedFields[] = "Address";
-                }
-                if (!empty($birthdate)) {
-                    $updatedFields[] = "Birth Date";
-                }
-                if (!empty($group_id)) {
-                    $updatedFields[] = "Group Id";
-                }
-                if (!empty($photo)) {
-                    $updatedFields[] = "Photo";
-                }
-                
-                if (!empty($updatedFields)) {
-                    $updatedFieldsStr = implode(", ", $updatedFields);
-                    $message = "Update: $student_name - Updated Fields: $updatedFieldsStr";
-                } else {
-                    $message = "Update: $student_name - No Fields Updated";
-                }
-                
-                $query = "UPDATE student SET LastName='$student_name', Address='$address', BirthDate='$birthdate', GroupId='$group_id', photo='$photo' WHERE StudentId='$student_id'";
-                mysqli_query($connection, $query);
-            } elseif (isset($_POST['delete'])) {
-                $query = "DELETE FROM student WHERE StudentId='$student_id'";
-                mysqli_query($connection, $query);
-                $message = "Delete: $student_id";
+    $stdId = $_GET["student_id"];
+    $stdName = $_GET["student_name"];
+    $address = $_GET["address"];
+    $birthdate = $_GET["birthdate"];
+    $groupId = $_GET["group_id"];
+    $photo = $_GET["photo"];
+
+    function insert($stdId, $stdName, $address, $birthdate, $groupId, $photo)
+    {
+        global $connection;
+        if (!empty($stdId) && !empty($stdName) && !empty($groupId)) {
+            $sqlStmt = "INSERT INTO student VALUES ($stdId, '$stdName', '$address', '$birthdate', $groupId, '$photo')";
+            $queryId = mysqli_query($connection, $sqlStmt);
+            if ($queryId) {
+                echo "The person with the id $stdId has been added successfully <br/>";
+            } else {
+                echo mysqli_error($connection);
             }
+        } else {
+            echo "Please fill out the Student ID, Name, and Group ID";
         }
+    }
 
-        echo $message; // Exibe a mensagem diretamente na página
-        ?>
+    function update($stdId, $stdName, $address, $birthdate, $groupId, $photo)
+    {
+        global $connection;
+        $checkExistenceQuery = "SELECT * FROM student WHERE StudentId=$stdId";
+        $result = mysqli_query($connection, $checkExistenceQuery);
+        
+        if (mysqli_num_rows($result) > 0) {
+            $row = mysqli_fetch_assoc($result);
+            
+            $updateFields = array();
+            if (!empty($stdName) && $stdName !== $row['LastName']) {
+                $updateFields[] = "LastName='$stdName'";
+            }
+            if (!empty($address) && $address !== $row['Address']) {
+                $updateFields[] = "Address='$address'";
+            }
+            if (!empty($birthdate) && $birthdate !== $row['BirthDate']) {
+                $updateFields[] = "BirthDate='$birthdate'";
+            }
+            if (!empty($groupId) && $groupId !== $row['GroupId']) {
+                $updateFields[] = "GroupId=$groupId";
+            }
+            if (!empty($photo) && $photo !== $row['photo']) {
+                $updateFields[] = "photo='$photo'";
+            }
+            
+            if (count($updateFields) > 0) {
+                $sqlStmt = "UPDATE student SET " . implode(', ', $updateFields) . " WHERE StudentId=$stdId";
+                $queryId = mysqli_query($connection, $sqlStmt);
+                if ($queryId) {
+                    echo "The person with the id $stdId has been updated successfully. Updated fields: " . implode(', ', $updateFields) . "<br/>";
+                } else {
+                    echo mysqli_error($connection);
+                }
+            } else {
+                echo "No fields to update.";
+            }
+        } else {
+            echo "The student with ID $stdId does not exist.";
+        }
+    }
+    
+
+    function delete($stdId)
+    {
+        global $connection;
+        $checkExistenceQuery = "SELECT * FROM student WHERE StudentId=$stdId";
+        $result = mysqli_query($connection, $checkExistenceQuery);
+        
+        if (mysqli_num_rows($result) > 0) {
+            $deleteQuery = "DELETE FROM student WHERE StudentId=$stdId";
+            $deleteResult = mysqli_query($connection, $deleteQuery);
+            if ($deleteResult) {
+                echo "The person with the id $stdId has been deleted successfully <br/>";
+            } else {
+                echo mysqli_error($connection);
+            }
+        } else {
+            echo "The student with ID $stdId does not exist.";
+        }
+    }
+
+    if ($oper == 'add') {
+        insert($stdId, $stdName, $address, $birthdate, $groupId, $photo);
+    } else if ($oper == 'del') {
+        if (!empty($stdId)) {
+            delete($stdId);
+        } else {
+            echo "Fill out the student ID";
+        }
+    } else if ($oper == 'upd') {
+        update($stdId, $stdName, $address, $birthdate, $groupId, $photo);
+    } else {
+        echo "Invalid operation";
+    }
+}
+?>
